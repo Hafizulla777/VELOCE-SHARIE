@@ -1,16 +1,64 @@
-# React + Vite
+# VELOCE SHARE
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A production-ready MERN Stack Premium Peer-to-Peer Car Rental Platform.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Frontend
+- React
+- Vite
+- Tailwind CSS
+- Axios
+- React Router
 
-## React Compiler
+Backend
+- Node.js
+- Express.js
+- MongoDB Atlas
+- JWT Authentication
+- Nodemailer
+- Stripe
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Project Structure
 
-## Expanding the ESLint configuration
+```
+client/
+server/
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Installation
+
+### Client
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+### Server
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+## Environment Variables
+
+Create:
+
+```
+client/.env
+server/.env
+```
+
+These files are ignored by Git.
+
+## Deployment
+
+Frontend → Vercel
+
+Backend → Render
+
+Database → MongoDB Atlas
