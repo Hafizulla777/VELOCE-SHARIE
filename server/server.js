@@ -20,7 +20,27 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'https://veloce-sharie.vercel.app',
+  origin: process.env.CLIENT_URL || 'https://veloce-sharie-mygu-cml9frpam-hafiz-shaik.vercel.app',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://veloce-sharie.vercel.app',
+  'https://veloce-sharie-mygu.vercel.app',
+  'https://veloce-sharie-mygu-cml9frpam-hafiz-shaik.vercel.app'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
