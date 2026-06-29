@@ -20,7 +20,7 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.CLIENT_URL || 'veloce-sharie-pu6s8lecg-hafiz-shaik.vercel.app',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -75,18 +75,18 @@ console.log('  ✅ Admin routes loaded');
 
 app.use((err, req, res, next) => {
   console.error('💥 Error:', err.message || err);
-  
+
   // Log full error in development
   if (process.env.NODE_ENV === 'development') {
     console.error('Stack:', err.stack);
   }
-  
+
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { 
+    ...(process.env.NODE_ENV === 'development' && {
       stack: err.stack,
-      details: err 
+      details: err
     })
   });
 });
