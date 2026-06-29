@@ -20,7 +20,7 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'veloce-sharie-pu6s8lecg-hafiz-shaik.vercel.app',
+  origin: process.env.CLIENT_URL || 'https://veloce-sharie-pu6s8lecg-hafiz-shaik.vercel.app',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
