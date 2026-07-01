@@ -58,7 +58,7 @@ app.use(cors({
 const authRoutes = require('./routes/authRoutes');
 const carRoutes = require('./routes/carRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
-const simpleBookingRoutes = require('./routes/simpleBookingRoutes'); // NEW simple routes
+// const simpleBookingRoutes = require('./routes/simpleBookingRoutes'); // NEW simple routes
 const adminRoutes = require('./routes/adminRoutes');
 
 
@@ -82,8 +82,8 @@ app.use('/api/contact', contactRoutes);
 
 // ⭐ CRITICAL: Mount SIMPLE booking routes BEFORE general booking routes!
 // This ensures /create-simple is caught by our new controller
-app.use('/api/bookings', simpleBookingRoutes);   // ← FIRST (catches /create-simple)
-console.log('  ✅ Simple booking routes loaded (/create-simple)');
+// app.use('/api/bookings', simpleBookingRoutes);   // ← FIRST (catches /create-simple)
+// console.log('  ✅ Simple booking routes loaded (/create-simple)');
 
 // General booking routes (old ones) - mounted AFTER so they don't override
 app.use('/api/bookings', bookingRoutes);           // ← SECOND (catches other endpoints)
@@ -146,7 +146,6 @@ app.listen(PORT, () => {
 ║   POST /api/auth/register               ║
 ║   GET  /api/cars                        ║
 ║   GET  /api/cars/:id                    ║
-║   POST /api/bookings/create-simple     ⭐ NEW!
 ║   GET  /api/admin/stats                 ║
 ║   PUT  /api/admin/cars/:id/approve      ║
 ║   PUT  /api/admin/cars/:id/reject       ║

@@ -1,50 +1,45 @@
 // ============================================================================
 // FILE: server/routes/bookingRoutes.js
-// PURPOSE: All booking-related API routes (Fixed version!)
+// PURPOSE: Booking routes (Single production version)
 // ============================================================================
 
 const express = require('express');
 const router = express.Router();
 
-// Import controllers (use simple one for demo)
-const { 
-  createSimpleBooking,
-  getMyBookingsSimple 
-} = require('../controllers/simpleBookingController');
-
-// ADDED: Import owner/admin controller for the missing routes
-const { 
-  getMyBookings, 
-  updateBookingStatus 
+const {
+  createBooking,
+  getMyBookings,
+  getBookingById,
+  cancelBooking,
+  updateBookingStatus
 } = require('../controllers/bookingController');
 
 const { protect } = require('../middleware/authMiddleware');
 
-
 // ============================================
-// CUSTOMER BOOKING ROUTES (UNCHANGED)
-// ============================================
-
-// Create new booking (SIMPLE - No payment needed!)
-router.route('/')
-  .post(protect, createSimpleBooking);
-
-// Get current user's bookings
-router.route('/my-bookings')
-  .get(protect, getMyBookingsSimple);
-
-
-// ============================================
-// OWNER BOOKING ROUTES (ADDED THESE TWO)
+// CUSTOMER ROUTES
 // ============================================
 
-// Get owner's incoming bookings
-router.route('/owner/bookings')
-  .get(protect, getMyBookings);
+// Create booking
+router.post('/', protect, createBooking);
 
-// Update booking status (Approve/Reject for owners)
-router.route('/:id/status')
-  .put(protect, updateBookingStatus);
+// Get my bookings
+router.get('/my-bookings', protect, getMyBookings);
 
+// Get single booking
+router.get('/:id', protect, getBookingById);
+
+// Cancel booking
+router.put('/:id/cancel', protect, cancelBooking);
+
+// ============================================
+// OWNER ROUTES
+// ============================================
+
+// Owner bookings
+router.get('/owner/bookings', protect, getMyBookings);
+
+// Update booking status
+router.put('/:id/status', protect, updateBookingStatus);
 
 module.exports = router;
