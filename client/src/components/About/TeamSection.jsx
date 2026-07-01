@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { FaLinkedinIn, FaTwitter } from 'react-icons/fa';
-import NotFoundPage from '../../pages/NotFoundPage'
 
 const TeamSection = () => {
   const teamMembers = [
@@ -128,7 +127,7 @@ const TeamSection = () => {
             Check out our open positions and become part of the Veloce Share family.
           </p>
           <a
-            href={<NotFoundPage />}
+            href="/careers"
             className="inline-block btn-primary px-10 py-3.5 rounded-xl text-sm font-bold uppercase tracking-[0.15em] hover:-translate-y-0.5"
           >
             View Open Positions
