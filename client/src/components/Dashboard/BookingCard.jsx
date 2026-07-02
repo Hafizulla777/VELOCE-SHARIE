@@ -2,8 +2,10 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaCalendarAlt, FaMapMarkerAlt, FaCar, FaChevronRight, FaClock } from 'react-icons/fa';
 
+// FIX: Added 'approved' to match backend state machine
 const statusConfig = {
   pending: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400', label: 'Pending' },
+  approved: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', label: 'Confirmed' },
   confirmed: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', label: 'Confirmed' },
   active: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400', label: 'Active' },
   completed: { bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-400', label: 'Completed' },
@@ -11,9 +13,11 @@ const statusConfig = {
 };
 
 const BookingCard = ({ booking }) => {
-  const car = booking.carId || {};
+  const car = booking.car || {};
   const status = statusConfig[booking.status] || statusConfig.pending;
-  const carImage = car.image || car.imageUrl || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=400';
+
+  // FIX: Use virtuals first, fallback to raw fields for safety
+  const carImage = car.displayImages?.[0] || car.image || car.imageUrl || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=400';
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -33,7 +37,7 @@ const BookingCard = ({ booking }) => {
         <div className="sm:w-48 h-40 sm:h-auto relative overflow-hidden flex-shrink-0">
           <img
             src={carImage}
-            alt={car.name || 'Car'}
+            alt={car.displayName || 'Car'}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -44,11 +48,13 @@ const BookingCard = ({ booking }) => {
           <div>
             <div className="flex items-start justify-between gap-4 mb-3">
               <div>
+                {/* FIX: Use car.displayName */}
                 <h3 className="font-bold text-white text-lg tracking-tight group-hover:text-primary-400 transition-colors">
-                  {car.name || 'Unknown Car'}
+                  {car.displayName || car.name || 'Unknown Car'}
                 </h3>
+                {/* FIX: Use car.displayCategory */}
                 <p className="text-xs text-white/40 uppercase tracking-wider font-semibold mt-0.5">
-                  {car.brand || ''} {car.type ? `• ${car.type}` : ''}
+                  {car.brand || ''} {car.displayCategory ? `• ${car.displayCategory}` : (car.type ? `• ${car.type}` : '')}
                 </p>
               </div>
               <span className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${status.bg} ${status.border} ${status.text}`}>
@@ -75,7 +81,7 @@ const BookingCard = ({ booking }) => {
                 <FaMapMarkerAlt className="text-primary-500/60 text-xs flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">Location</p>
-                  <p className="text-white/70 text-xs font-medium">{car.location || 'TBD'}</p>
+                  <p className="text-white/70 text-xs font-medium">{booking.pickupLocation || car.location || 'TBD'}</p>
                 </div>
               </div>
             </div>
@@ -85,13 +91,14 @@ const BookingCard = ({ booking }) => {
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
             <div>
               <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">Total</p>
+              {/* FIX: Prioritize totalAmount (your new fee logic), fallback to totalPrice, then virtual */}
               <p className="text-xl font-black text-white tracking-tight">
-                ${booking.totalPrice || car.price || '—'}
+                ${booking.totalAmount || booking.totalPrice || car.displayPrice || '—'}
                 <span className="text-xs text-white/30 font-medium ml-1">/trip</span>
               </p>
             </div>
             <Link
-              to={`/cars/${car._id || booking.carId}`}
+              to={`/cars/${car._id || booking.car}`}
               className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary-500 hover:text-primary-400 transition-colors group/btn"
             >
               View Car

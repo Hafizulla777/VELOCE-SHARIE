@@ -3,44 +3,18 @@ import { FaClipboardList, FaCar, FaCalendarCheck, FaStar } from 'react-icons/fa'
 import { fadeUp, staggerContainer } from '../animations/variants';
 
 const stats = [
-  {
-    label: 'Total Bookings',
-    value: '0',
-    icon: FaClipboardList,
-    color: 'from-primary-500 to-primary-600',
-    shadow: 'shadow-primary-500/20',
-    change: 'Your rental history',
-  },
-  {
-    label: 'Cars Rented',
-    value: '0',
-    icon: FaCar,
-    color: 'from-blue-500 to-cyan-500',
-    shadow: 'shadow-blue-500/20',
-    change: 'Unique vehicles',
-  },
-  {
-    label: 'Completed',
-    value: '0',
-    icon: FaCalendarCheck,
-    color: 'from-emerald-500 to-green-500',
-    shadow: 'shadow-emerald-500/20',
-    change: 'Successful trips',
-  },
-  {
-    label: 'Avg. Rating',
-    value: '—',
-    icon: FaStar,
-    color: 'from-amber-500 to-yellow-500',
-    shadow: 'shadow-amber-500/20',
-    change: 'Your reviews',
-  },
+  { label: 'Total Bookings', value: '0', icon: FaClipboardList, color: 'from-primary-500 to-primary-600', shadow: 'shadow-primary-500/20', change: 'Your rental history' },
+  { label: 'Cars Rented', value: '0', icon: FaCar, color: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-500/20', change: 'Unique vehicles' },
+  { label: 'Completed', value: '0', icon: FaCalendarCheck, color: 'from-emerald-500 to-green-500', shadow: 'shadow-emerald-500/20', change: 'Successful trips' },
+  { label: 'Avg. Rating', value: '—', icon: FaStar, color: 'from-amber-500 to-yellow-500', shadow: 'shadow-amber-500/20', change: 'Your reviews' },
 ];
 
 const DashboardStats = ({ bookings }) => {
   const totalBookings = bookings?.length || 0;
-  const uniqueCars = [...new Set(bookings?.map((b) => b.carId?._id || b.carId).filter(Boolean))].length;
-  const completed = bookings?.filter((b) => b.status === 'completed' || b.status === 'confirmed').length || 0;
+  const uniqueCars = [...new Set(bookings?.map((b) => b.car?._id || b.car).filter(Boolean))].length;
+
+  // FIX: Added 'approved' to match backend state machine realities
+  const completed = bookings?.filter((b) => b.status === 'completed' || b.status === 'confirmed' || b.status === 'approved').length || 0;
 
   const displayStats = stats.map((s, i) => {
     if (i === 0) return { ...s, value: totalBookings };

@@ -1,191 +1,197 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaShieldAlt, FaBolt, FaLock, FaCheckCircle, FaHeart } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../utils/api';
 import toast from 'react-hot-toast';
+import { FaCalendarAlt, FaClock, FaArrowRight, FaShieldAlt } from 'react-icons/fa';
+import { fadeUp } from '../animations/variants';
 
-const BookingCard = ({ car, startDate, setStartDate, endDate, setEndDate, handleBooking }) => {
-  const [isSaved, setIsSaved] = useState(false);
+const BookingCard = ({ car }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  // Check if car is already saved in localStorage on load
-  useEffect(() => {
-    const savedCars = JSON.parse(localStorage.getItem('veloceSavedCars') || '[]');
-    if (savedCars.includes(car._id)) {
-      setIsSaved(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Calculate days and price dynamically
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
+  const days = start && end ? Math.ceil((end - start) / (1000 * 60 * 60 * 24)) : 0;
+
+  // Use the dual-format virtuals
+  const pricePerDay = car.displayPrice || 0;
+  const totalPrice = days > 0 ? (days * pricePerDay) : 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!user) {
+      toast.error('Please login to book this car');
+      navigate('/login');
+      return;
     }
-  }, [car._id]);
 
-  const calculateDays = () => {
-    if (!startDate || !endDate) return 1;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 1;
-  };
-
-  const days = calculateDays();
-  const pricePerDay = car.price || car.pricePerDay || 0;
-  const subtotal = pricePerDay * days;
-  const taxes = subtotal * 0.1;
-  const total = subtotal + taxes;
-
-  // Toggle Save/Like functionality
-  const toggleSave = () => {
-    const savedCars = JSON.parse(localStorage.getItem('veloceSavedCars') || '[]');
-    
-    if (isSaved) {
-      const filtered = savedCars.filter(id => id !== car._id);
-      localStorage.setItem('veloceSavedCars', JSON.stringify(filtered));
-      setIsSaved(false);
-      toast('Removed from wishlist', { icon: '💔' });
-    } else {
-      savedCars.push(car._id);
-      localStorage.setItem('veloceSavedCars', JSON.stringify(savedCars));
-      setIsSaved(true);
-      toast.success('Saved to wishlist!', { icon: '❤️' });
+    if (!startDate || !endDate) {
+      toast.error('Please select pickup and drop-off dates');
+      return;
     }
-  };
 
-  // Share functionality (Copies link to clipboard)
-  const handleShare = async () => {
-    const pageUrl = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: car.name || `${car.brand} ${car.model}`, url: pageUrl });
-      } catch (err) {
-        console.log('User cancelled share');
+    if (days <= 0) {
+      toast.error('Drop-off date must be after pickup date');
+      return;
+    }
+
+    if (user.role === 'owner' && car.owner?._id === user._id) {
+      toast.error('You cannot book your own car');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // ── NUCLEAR PAYLOAD: Sends both keys to work on OLD backend AND NEW backend ──
+      const payload = {
+        car: car._id,
+        carId: car._id,        // Keeping old key just in case Render hasn't updated yet
+        startDate: startDate,
+        endDate: endDate,
+      };
+
+      const response = await api.post('/bookings', payload);
+
+      toast.success(response.data.message || 'Booking request sent to owner!');
+
+      // Redirect to customer bookings
+      if (user.role === 'owner') {
+        navigate('/dashboard/owner/bookings');
+      } else {
+        navigate('/dashboard/my-bookings');
       }
-    } else {
-      try {
-        await navigator.clipboard.writeText(pageUrl);
-        toast.success('Link copied to clipboard!');
-      } catch (err) {
-        toast.error('Failed to copy link');
-      }
+
+    } catch (error) {
+      // This will catch the exact 400 error message from the backend bouncers
+      const message = error.response?.data?.message || 'Failed to create booking. Check your dates.';
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Get today's date in YYYY-MM-DD format to prevent selecting past dates
+  const today = new Date().toISOString().split('T')[0];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      className="glass-panel rounded-3xl p-6 sticky top-24 shadow-2xl shadow-black/50"
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate="visible"
+      className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-transparent p-6 backdrop-blur-sm sticky top-28"
     >
-      <div className="flex items-end justify-between mb-6">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <span className="text-3xl font-black text-white">${pricePerDay}</span>
-          <span className="text-white/50 text-sm">/ day</span>
+          <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-bold">Price</p>
+          <h2 className="text-3xl font-black text-white tracking-tight">
+            ${pricePerDay} <span className="text-sm text-white/40 font-medium">/ day</span>
+          </h2>
         </div>
-        <div className="px-3 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-500 text-xs font-bold uppercase tracking-wider">
-          20% OFF
-        </div>
+        {car.rating > 0 && (
+          <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-lg border border-yellow-500/20">
+            <span className="text-yellow-400 text-sm font-bold">★</span>
+            <span className="text-yellow-400 text-sm font-bold">{car.rating}</span>
+          </div>
+        )}
       </div>
 
-      <div className="space-y-3 mb-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1">Pick-up</label>
-            <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input-field mt-1" />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1">Drop-off</label>
-            <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input-field mt-1" />
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1">Pick-up Time</label>
-            <select className="input-field mt-1">
-              <option className="bg-dark-100">10:00 AM</option>
-              <option className="bg-dark-100">12:00 PM</option>
-              <option className="bg-dark-100">02:00 PM</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1">Driver Age</label>
-            <select className="input-field mt-1">
-              <option className="bg-dark-100">25+</option>
-              <option className="bg-dark-100">30+</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="pt-2">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 cursor-pointer hover:border-primary-500/30 transition-colors">
-            <div className="flex items-center gap-2 text-sm text-white/80">
-              <FaShieldAlt className="text-primary-500" /> Premium Insurance
+            <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/50 mb-1.5 block">
+              Pickup Date
+            </label>
+            <div className="relative">
+              <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs" />
+              <input
+                type="date"
+                value={startDate}
+                min={today}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  // Auto-set drop-off to 1 day after pickup
+                  if (!endDate || endDate <= e.target.value) {
+                    const nextDay = new Date(e.target.value);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    setEndDate(nextDay.toISOString().split('T')[0]);
+                  }
+                }}
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white text-sm focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/50 outline-none transition-all [color-scheme:dark]"
+                required
+              />
             </div>
-            <span className="text-sm font-bold text-white">$15/day</span>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/50 mb-1.5 block">
+              Drop-off Date
+            </label>
+            <div className="relative">
+              <FaClock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs" />
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || today}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white text-sm focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/50 outline-none transition-all [color-scheme:dark]"
+                required
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-2 py-4 border-t border-white/5 mb-6">
-        <div className="flex justify-between text-sm">
-          <span className="text-white/60">${pricePerDay} x {days} days</span>
-          <span className="text-white font-medium">${subtotal.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-white/60">Taxes & Fees (10%)</span>
-          <span className="text-white font-medium">${taxes.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between pt-2 mt-2 border-t border-white/5">
-          <span className="text-white font-bold">Total</span>
-          <span className="text-primary-500 font-black text-xl">${total.toFixed(2)}</span>
-        </div>
-      </div>
+        {days > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="bg-white/[0.03] border border-white/10 rounded-xl p-4 space-y-2"
+          >
+            <div className="flex justify-between text-sm text-white/60">
+              <span>${pricePerDay} x {days} days</span>
+              <span>${totalPrice.toFixed(2)}</span>
+            </div>
+            <div className="border-t border-dashed border-white/10 pt-2 flex justify-between text-white font-bold">
+              <span>Estimated Total</span>
+              <span>${totalPrice.toFixed(2)}</span>
+            </div>
+            <p className="text-[10px] text-white/30 pt-1">* Final total includes service fee & insurance applied at checkout</p>
+          </motion.div>
+        )}
 
-      <form onSubmit={handleBooking}>
-        <motion.button 
+        <motion.button
           type="submit"
-          whileHover={{ scale: 1.02 }} 
-          whileTap={{ scale: 0.98 }} 
-          className="w-full btn-primary py-4 rounded-xl font-bold uppercase tracking-[0.15em] text-sm"
+          disabled={loading || !startDate || !endDate}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full relative group bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold text-sm uppercase tracking-[0.15em] py-4 rounded-xl overflow-hidden shadow-lg shadow-primary-500/25 disabled:opacity-40 disabled:cursor-not-allowed mt-2"
         >
-          Reserve Now
-        </motion.button>
-      </form>
-
-      {/* FIXED: Save for Later now toggles the wishlist state */}
-      <button 
-        onClick={toggleSave} 
-        className={`w-full mt-3 py-3 rounded-xl border text-sm font-medium uppercase tracking-wider transition-all duration-300 ${
-          isSaved 
-            ? 'border-primary-500/50 text-primary-400 bg-primary-500/10' 
-            : 'border-white/10 text-white/70 hover:text-white hover:bg-white/5'
-        }`}
-      >
-        {isSaved ? '✓ Saved to Wishlist' : 'Save for Later'}
-      </button>
-
-      <div className="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-white/5">
-        {/* FIXED: Like button now works and turns red */}
-        <motion.button 
-          whileTap={{ scale: 0.9 }}
-          onClick={toggleSave}
-          className="flex flex-col items-center text-center gap-1 group"
-        >
-          <FaHeart className={`text-sm transition-colors duration-300 ${isSaved ? 'text-red-500' : 'text-primary-500 group-hover:text-red-400'}`} />
-          <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">{isSaved ? 'Liked' : 'Like'}</span>
+          <span className="relative z-10 flex items-center justify-center gap-3">
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                Book Now
+                <FaArrowRight className="text-xs group-hover:translate-x-1 transition-transform" />
+              </>
+            )}
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
         </motion.button>
 
-        <div className="flex flex-col items-center text-center gap-1">
-          <FaBolt className="text-primary-500 text-sm" />
-          <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Instant Book</span>
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <FaShieldAlt className="text-white/20 text-xs" />
+          <p className="text-[11px] text-white/30">Secure booking • Free cancellation up to 24hrs</p>
         </div>
-
-        {/* FIXED: Share button now copies link */}
-        <motion.button 
-          whileTap={{ scale: 0.9 }}
-          onClick={handleShare}
-          className="flex flex-col items-center text-center gap-1 group"
-        >
-          <FaCheckCircle className="text-primary-500 text-sm group-hover:text-green-400 transition-colors" />
-          <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Share</span>
-        </motion.button>
-      </div>
+      </form>
     </motion.div>
   );
 };

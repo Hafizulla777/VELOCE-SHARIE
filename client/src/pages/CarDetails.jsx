@@ -17,18 +17,14 @@ const CarDetails = () => {
   const { user } = useAuth();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  
-  // Added state for floating buttons
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
     const fetchCar = async () => {
       try {
-        const { data } = await api.get(`/cars/${id}`);
-        const carData = data?.data || data;
-        setCar(carData);
+        const response = await api.get(`/cars/${id}`);
+        // Applied double-nesting rule
+        setCar(response.data.data || response.data);
       } catch (error) {
         toast.error('Failed to load car details');
       } finally {
@@ -38,7 +34,6 @@ const CarDetails = () => {
     fetchCar();
   }, [id]);
 
-  // Check if car is saved when loaded
   useEffect(() => {
     if (car?._id) {
       const savedCars = JSON.parse(localStorage.getItem('veloceSavedCars') || '[]');
@@ -48,29 +43,6 @@ const CarDetails = () => {
     }
   }, [car]);
 
-  const handleBooking = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      toast.error('Please login to book a car');
-      navigate('/login');
-      return;
-    }
-
-    if (user.role === 'owner') {
-      toast.error('Owners cannot book cars');
-      return;
-    }
-
-    try {
-      await api.post('/bookings', { carId: id, startDate, endDate });
-      toast.success('Booking successful!');
-      navigate('/dashboard/my-bookings');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Booking failed');
-    }
-  };
-
-  // Floating button: Save/Like Logic
   const toggleSave = () => {
     const savedCars = JSON.parse(localStorage.getItem('veloceSavedCars') || '[]');
     if (isSaved) {
@@ -86,12 +58,11 @@ const CarDetails = () => {
     }
   };
 
-  // Floating button: Share Logic
   const handleShare = async () => {
     const pageUrl = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ title: car?.name || `${car?.brand} ${car?.model}`, url: pageUrl });
+        await navigator.share({ title: car?.displayName || 'Luxury Car', url: pageUrl });
       } catch (err) {
         console.log('User cancelled share');
       }
@@ -108,15 +79,13 @@ const CarDetails = () => {
   if (loading) return <Loader />;
   if (!car) return <div className="text-center py-20 text-white">Car not found</div>;
 
-  const getCarImage = (c) => c?.images?.[0] || c?.imageUrl || c?.image || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1000';
-  const images = car.images?.length > 0 ? car.images : [getCarImage(car)];
-  const carTitle = car.name || `${car.brand || ''} ${car.model || ''}`.trim();
+  const getCarImage = (c) => c?.displayImages?.[0] || c?.images?.[0] || c?.imageUrl || c?.image || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1000';
+  const images = car.displayImages?.length > 0 ? car.displayImages : (car.images?.length > 0 ? car.images : [getCarImage(car)]);
 
   return (
     <div className="bg-black text-white min-h-screen pb-24 overflow-hidden">
-      {/* Background Glow */}
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[150px] pointer-events-none"></div>
-      
+
       <div className="container mx-auto px-6 lg:px-10 pt-32 relative z-10">
         {/* Breadcrumb */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 text-sm text-white/40 mb-8">
@@ -124,7 +93,7 @@ const CarDetails = () => {
           <span>/</span>
           <Link to="/cars" className="hover:text-primary-500 transition-colors">Cars</Link>
           <span>/</span>
-          <span className="text-white/80 truncate">{carTitle}</span>
+          <span className="text-white/80 truncate">{car.displayName || 'Car Details'}</span>
         </motion.div>
 
         {/* Header */}
@@ -141,11 +110,11 @@ const CarDetails = () => {
                 <FaBolt className="text-[10px] text-primary-500" /> Instant Book
               </span>
             </motion.div>
-            
+
             <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-3">
-              {carTitle}
+              {car.displayName || 'Unknown Car'}
             </motion.h1>
-            
+
             <motion.div variants={fadeUp} className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <div className="flex gap-1">
@@ -155,28 +124,15 @@ const CarDetails = () => {
                 <span className="text-white/40 text-sm">(128 reviews)</span>
               </div>
               <div className="h-4 w-px bg-white/10"></div>
-              <span className="text-white/60 text-sm uppercase tracking-wider font-semibold">{car.brand} • {car.type || car.category}</span>
+              <span className="text-white/60 text-sm uppercase tracking-wider font-semibold">{car.displayCategory || 'Luxury'}</span>
             </motion.div>
           </div>
 
-          {/* FIXED FLOATING BUTTONS: Now fully functional! */}
           <motion.div variants={fadeUp} className="flex gap-3">
-            <motion.button 
-              whileTap={{ scale: 0.9 }}
-              onClick={toggleSave}
-              className={`w-12 h-12 rounded-full glass-panel flex items-center justify-center transition-all duration-300 ${
-                isSaved 
-                  ? 'text-red-500 border-red-500/50 bg-red-500/10 hover:bg-red-500/20' 
-                  : 'text-white/70 hover:text-red-400 hover:border-red-500/30'
-              }`}
-            >
+            <motion.button whileTap={{ scale: 0.9 }} onClick={toggleSave} className={`w-12 h-12 rounded-full glass-panel flex items-center justify-center transition-all duration-300 ${isSaved ? 'text-red-500 border-red-500/50 bg-red-500/10 hover:bg-red-500/20' : 'text-white/70 hover:text-red-400 hover:border-red-500/30'}`}>
               <FaHeart className="text-lg" />
             </motion.button>
-            <motion.button 
-              whileTap={{ scale: 0.9 }}
-              onClick={handleShare}
-              className="w-12 h-12 rounded-full glass-panel flex items-center justify-center text-white/70 hover:text-primary-500 hover:border-primary-500/30 transition-colors"
-            >
+            <motion.button whileTap={{ scale: 0.9 }} onClick={handleShare} className="w-12 h-12 rounded-full glass-panel flex items-center justify-center text-white/70 hover:text-primary-500 hover:border-primary-500/30 transition-colors">
               <FaShare className="text-lg" />
             </motion.button>
           </motion.div>
@@ -186,7 +142,7 @@ const CarDetails = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="h-[500px] md:h-[600px]">
-              <Gallery images={images} name={carTitle} />
+              <Gallery images={images} name={car.displayName} />
             </motion.div>
 
             {/* Owner Card */}
@@ -201,16 +157,8 @@ const CarDetails = () => {
                 <div>
                   <h4 className="text-lg font-bold text-white">{car.owner?.name || 'Veloce Share'}</h4>
                   <p className="text-xs text-white/50 uppercase tracking-wider">Verified Owner • Member since 2021</p>
-                  <div className="flex items-center gap-4 mt-1 text-xs text-white/60">
-                    <span className="flex items-center gap-1"><FaStar className="text-primary-500" /> 4.9 Rating</span>
-                    <span>•</span>
-                    <span>Response: 1 hour</span>
-                  </div>
                 </div>
               </div>
-              <button className="px-6 py-3 rounded-xl border border-white/10 bg-white/5 text-white font-bold text-sm uppercase tracking-wider hover:bg-primary-500 hover:border-primary-500 transition-all">
-                View Profile
-              </button>
             </motion.div>
 
             <CarTabs car={car} />
@@ -218,18 +166,11 @@ const CarDetails = () => {
 
           {/* Right Sidebar (Booking) */}
           <div className="lg:col-span-1">
-            <BookingCard 
-              car={car} 
-              startDate={startDate} 
-              setStartDate={setStartDate} 
-              endDate={endDate} 
-              setEndDate={setEndDate} 
-              handleBooking={handleBooking} 
-            />
+            {/* CLEAN: Only passing the car object. BookingCard handles 100% of the logic. */}
+            <BookingCard car={car} />
           </div>
         </div>
 
-        {/* Back Button */}
         <div className="mt-12 flex justify-center">
           <Link to="/cars" className="flex items-center gap-2 text-white/60 hover:text-primary-500 transition-colors font-medium text-sm uppercase tracking-wider">
             <FaArrowLeft /> Back to Fleet

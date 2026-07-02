@@ -1,8 +1,3 @@
-// ============================================================================
-// FILE: src/pages/Dashboard/DashboardHome.jsx (FIXED VERSION)
-// PURPOSE: Dashboard home page with working booking display
-// ============================================================================
-
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -23,71 +18,24 @@ const DashboardHome = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
-        console.log('📊 Fetching dashboard data...');
-        
-        // ✅ FIX: Use CORRECT endpoint - our new simple booking system
-        const response = await api.get('/bookings/my-bookings-simple');
-        
-        console.log('📋 Response:', response.data);
-        
-        if (response.data.success) {
-          const bookingsData = response.data.data || [];
-          setBookings(bookingsData);
-          console.log(`✅ Loaded ${bookingsData.length} bookings`);
-        }
-        
+
+        // ── CRITICAL FIX: Removed '-simple'. Using correct double-nested response. ──
+        const response = await api.get('/bookings/my-bookings');
+        const bookingsData = response.data.data?.bookings || [];
+        setBookings(bookingsData);
+
       } catch (error) {
-        console.error('❌ Error fetching bookings:', error);
+        console.error('Error fetching bookings:', error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchDashboardData();
   }, []);
 
-  // ✅ FIX: Get recent bookings (limit to 3 for dashboard)
+  // Get recent bookings (limit to 3 for dashboard)
   const recentBookings = bookings.slice(0, 3);
-
-  // ✅ FIX: Safe car name extraction
-  const getCarName = (booking) => {
-    // Try multiple possible field structures
-    if (booking.car?.name) return booking.car.name;
-    if (booking.car?.brand && booking?.type) return `${booking.car.brand} ${booking.type}`;
-    if (typeof booking.car === 'string') return 'Luxury Vehicle';
-    if (typeof booking.car === 'object' && booking.car !== null) {
-      return Object.values(booking.car).find(v => typeof v === 'string' && v.length > 2) || 'Premium Car';
-    }
-    return 'Luxury Vehicle';
-  };
-
-  // ✅ FIX: Get car image safely
-  const getCarImage = (booking) => {
-    if (booking.car?.image) return booking.car.image;
-    if (booking.car?.imageUrl) return booking.car.imageUrl;
-    if (Array.isArray(booking.car?.images) && booking.car.images[0]) return booking.car.images[0];
-    return 'https://images.unsplash.com/photo-1494976766949-88df6e44f042?w=200&h=150&fit=crop';
-  };
-
-  // ✅ FIX: Get price safely
-  const getPriceDisplay = (booking) => {
-    if (booking.totalPrice) return `$${booking.totalPrice}`;
-    if (booking.totalAmount) return `$${booking.totalAmount}`;
-    if (booking.subtotal) return `$${booking.subtotal}`;
-    return '$0';
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch {
-      return 'Invalid date';
-    }
-  };
 
   if (loading) return <Loader />;
 
@@ -144,36 +92,41 @@ const DashboardHome = () => {
           animate="visible"
           className="grid grid-cols-1 sm:grid-cols-2 gap-5"
         >
-          <motion.div
-            variants={fadeUp}
-            className="group rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 hover:border-primary-500/20 transition-all duration-500 cursor-pointer"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/20 flex items-center justify-center">
-                <FaCrown className="text-white text-lg" />
+          <Link to="/dashboard/owner/add-car" className="block">
+            <motion.div
+              variants={fadeUp}
+              className="group rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 hover:border-primary-500/20 transition-all duration-500 cursor-pointer"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/20 flex items-center justify-center">
+                  <FaCrown className="text-white text-lg" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-white text-sm">List a New Car</h3>
+                  <p className="text-xs text-white/35 mt-0.5">Add a vehicle to your fleet</p>
+                </div>
+                <FaArrowRight className="text-white/20 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
               </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-white text-sm">List a New Car</h3>
-                <p className="text-xs text-white/35 mt-0.5">Add a vehicle to your fleet</p>
+            </motion.div>
+          </Link>
+
+          <Link to="/dashboard/owner/bookings" className="block">
+            <motion.div
+              variants={fadeUp}
+              className="group rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 hover:border-primary-500/20 transition-all duration-500 cursor-pointer"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/20 flex items-center justify-center">
+                  <FaClipboardList className="text-white text-lg" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-white text-sm">View All Bookings</h3>
+                  <p className="text-xs text-white/35 mt-0.5">Manage incoming reservations</p>
+                </div>
+                <FaArrowRight className="text-white/20 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
               </div>
-              <FaArrowRight className="text-white/20 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
-            </div>
-          </motion.div>
-          <motion.div
-            variants={fadeUp}
-            className="group rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 hover:border-primary-500/20 transition-all duration-500 cursor-pointer"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/20 flex items-center justify-center">
-                <FaClipboardList className="text-white text-lg" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-white text-sm">View All Bookings</h3>
-                <p className="text-xs text-white/35 mt-0.5">Manage incoming reservations</p>
-              </div>
-              <FaArrowRight className="text-white/20 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
-            </div>
-          </motion.div>
+            </motion.div>
+          </Link>
         </motion.div>
       )}
 
@@ -184,7 +137,7 @@ const DashboardHome = () => {
             <h2 className="text-xl font-black text-white tracking-tight">Recent Bookings</h2>
             <p className="text-xs text-white/35 mt-1">Your latest rental activity</p>
           </div>
-          {recentBookings.length > 3 && (
+          {bookings.length > 3 && (
             <Link to="/dashboard/my-bookings" className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary-500 hover:text-primary-400 transition-colors group">
               View All
               <FaArrowRight className="text-[9px] group-hover:translate-x-1 transition-transform" />
@@ -193,7 +146,6 @@ const DashboardHome = () => {
         </div>
 
         {recentBookings.length === 0 ? (
-          /* Empty State */
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -219,25 +171,9 @@ const DashboardHome = () => {
             </Link>
           </motion.div>
         ) : (
-          /* Bookings List */
           <div className="space-y-4">
             {recentBookings.map((booking) => (
-              <BookingCard 
-                key={booking._id || Math.random()} 
-                booking={{
-                  ...booking,
-                  // ✅ Ensure these fields exist for BookingCard component
-                  _id: booking._id,
-                  confirmationNumber: booking.confirmationNumber,
-                  startDate: booking.startDate,
-                  endDate: booking.endDate,
-                  status: booking.status,
-                  // Pass extracted data as props so BookingCard can use them
-                  _carName: getCarName(booking),
-                  _carImage: getCarImage(booking),
-                  _priceDisplay: getPriceDisplay(booking)
-                }}
-              />
+              <BookingCard key={booking._id} booking={booking} />
             ))}
           </div>
         )}

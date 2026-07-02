@@ -28,7 +28,7 @@ const OwnerBookings = () => {
   const fetchBookings = async () => {
     try {
       const { data } = await api.get('/bookings/owner/bookings');
-      
+
       if (Array.isArray(data)) {
         setBookings(data);
       } else if (data?.data?.bookings && Array.isArray(data.data.bookings)) {
@@ -48,7 +48,7 @@ const OwnerBookings = () => {
     try {
       await api.put(`/bookings/${id}/status`, { status: newStatus });
       toast.success(`Booking ${newStatus}`);
-      fetchBookings(); 
+      fetchBookings();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update status');
     }
@@ -70,9 +70,8 @@ const OwnerBookings = () => {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-                filter === f ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-white'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${filter === f ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-white'
+                }`}
             >
               {f}
             </button>
@@ -94,8 +93,8 @@ const OwnerBookings = () => {
                 <div className="min-w-0">
                   <h3 className="text-white font-bold truncate">{booking.car?.name || `${booking.car?.brand || ''} ${booking.car?.model || ''}`}</h3>
                   <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
-                    <span className="flex items-center gap-1"><FiUser size={14}/> {booking.customer?.name || 'Customer'}</span>
-                    <span className="flex items-center gap-1"><FiCalendar size={14}/> {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1"><FiUser size={14} /> {booking.customer?.name || 'Customer'}</span>
+                    <span className="flex items-center gap-1"><FiCalendar size={14} /> {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
