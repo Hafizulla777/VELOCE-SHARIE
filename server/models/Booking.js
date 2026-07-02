@@ -14,25 +14,39 @@ const bookingSchema = new mongoose.Schema(
   {
     car: { type: mongoose.Schema.Types.ObjectId, ref: 'Car', required: [true, 'Car reference is required'] },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: [true, 'Customer reference is required'] },
-    
-    // FIXED: Removed 'required: true' so old bookings without an owner don't crash the app on save()
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
-    
+
+    // Removed 'required: true' so old bookings without an owner don't crash the app
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
     startDate: { type: Date, required: [true, 'Start date is required'] },
     endDate: { type: Date, required: [true, 'End date is required'] },
-    
+
     // Supports both simple totalPrice and advanced totalAmount
-    totalPrice: { type: Number }, 
+    totalPrice: { type: Number },
     totalAmount: { type: Number },
-    
+
     status: {
       type: String,
-      // FIXED: Added 'confirmed' and 'active' so database doesn't reject them
       enum: ['pending', 'approved', 'rejected', 'confirmed', 'active', 'completed', 'cancelled'],
       default: 'pending',
     },
     message: { type: String, trim: true, default: '' },
     adminNotes: { type: String, trim: true, default: '' },
+
+    // ── Stripe & Fee Fields (Added to prevent silent DB drops) ──
+    days: { type: Number },
+    subtotal: { type: Number },
+    serviceFee: { type: Number },
+    insurance: { type: Number },
+    tax: { type: Number },
+    paymentStatus: { type: String, default: 'pending' },
+    stripePaymentIntentId: { type: String },
+    confirmationNumber: { type: String },
+    paidAt: { type: Date },
+    pickupLocation: { type: String, trim: true, default: '' },
+    cancelledAt: { type: Date },
+    cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    refundAmount: { type: Number },
   },
   { timestamps: true }
 );
@@ -52,10 +66,12 @@ bookingSchema.methods.transitionTo = function (newStatus) {
   return this.save();
 };
 
+// ── CRITICAL FIX: Removed 'pending' from this list ──
+// Now, multiple users can request the same dates. The owner decides who gets it.
 bookingSchema.statics.isCarAvailable = async function (carId, startDate, endDate, excludeBookingId = null) {
   const query = {
     car: carId,
-    status: { $in: ['pending', 'approved', 'confirmed', 'active'] },
+    status: { $in: ['approved', 'confirmed', 'active'] },
     $or: [
       { startDate: { $lte: endDate, $gte: startDate } },
       { endDate: { $lte: endDate, $gte: startDate } },

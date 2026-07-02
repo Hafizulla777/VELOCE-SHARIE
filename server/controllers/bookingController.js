@@ -1,20 +1,19 @@
 // ============================================================================
-// FILE: server/controllers/bookingController.js (UPDATED)
-// PURPOSE: Extended booking controller with email notifications & admin features
+// FILE: server/controllers/bookingController.js
 // ============================================================================
 
 const Booking = require('../models/Booking');
 const Car = require('../models/Car');
 const User = require('../models/User');
-// const nodemailer = require('nodemailer'); // Uncomment when ready to send emails
 
-// @desc    Create new booking (called after payment success)
+// @desc    Create new booking
 // @route   POST /api/bookings
 // @access  Private
 const createBooking = async (req, res) => {
   try {
     const {
-      carId,
+      car: carId,
+      carId: altCarId,
       startDate,
       endDate,
       pickupLocation,
@@ -22,51 +21,45 @@ const createBooking = async (req, res) => {
       totalAmount
     } = req.body;
 
-    if (!carId || !startDate || !endDate) {
+    const finalCarId = carId || altCarId;
+
+    if (!finalCarId || !startDate || !endDate) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields'
+        message: 'Please provide car, start date, and end date'
       });
     }
 
-    const car = await Car.findById(carId);
-
-    if (!car) {
-      return res.status(404).json({
-        success: false,
-        message: 'Car not found'
-      });
-    }
-
-    if (car.status !== 'approved') {
-      return res.status(400).json({
-        success: false,
-        message: 'This car is not available for booking'
-      });
-    }
-
-    const existingBooking = await Booking.findOne({
-      car: carId,
-      status: { $in: ['confirmed', 'active'] },
-      $or: [
-        { startDate: { $lte: new Date(startDate) }, endDate: { $gte: new Date(startDate) } },
-        { startDate: { $lte: new Date(endDate) }, endDate: { $gte: new Date(endDate) } },
-        { startDate: { $gte: new Date(startDate) }, endDate: { $lte: new Date(endDate) } }
-      ]
-    });
-
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message: 'Car is already booked for selected dates'
-      });
-    }
-
+    // ── FIX: Strict Date Validation to prevent "Invalid Date" DB crashes ──
     const start = new Date(startDate);
     const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid date format provided' });
+    }
+
+    if (start >= end) {
+      return res.status(400).json({ success: false, message: 'End date must be after start date' });
+    }
+
+    const car = await Car.findById(finalCarId);
+    if (!car) {
+      return res.status(404).json({ success: false, message: 'Car not found' });
+    }
+
+    // ── FIX: Only block if there is an APPROVED booking. Ignore pending ones. ──
+    const isAvailable = await Booking.isCarAvailable(finalCarId, start, end);
+    if (!isAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: 'Car is already booked and approved for these dates. Please try different dates.'
+      });
+    }
+
     const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24));
 
-    const pricePerDay = car.pricePerDay || car.price;
+    // Fee Logic (Preserved)
+    const pricePerDay = car.pricePerDay || car.price || 0;
     const subtotal = pricePerDay * diffDays;
     const serviceFee = 50;
     const insurance = 120;
@@ -74,20 +67,22 @@ const createBooking = async (req, res) => {
     const tax = Math.round(subtotal * taxRate);
     const total = subtotal + serviceFee + insurance + tax;
 
+    // ── FIX: Status is now 'pending'. The owner must approve it. ──
     const booking = await Booking.create({
       customer: req.user._id,
-      car: carId,
+      car: finalCarId,
       owner: car.owner,
-      startDate,
-      endDate,
+      startDate: start,
+      endDate: end,
       days: diffDays,
       subtotal,
       serviceFee,
       insurance,
       tax,
       totalAmount: totalAmount || total,
+      totalPrice: totalAmount || total,
       pickupLocation,
-      status: 'confirmed',
+      status: 'pending', // FIXED: Back to pending!
       paymentStatus: 'paid',
       stripePaymentIntentId: paymentIntentId,
       confirmationNumber: generateConfirmationNumber(),
@@ -96,21 +91,18 @@ const createBooking = async (req, res) => {
 
     const populatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('car', 'name year color image')
+      .populate('car')
       .populate('owner', 'name email');
 
     res.status(201).json({
       success: true,
       data: populatedBooking,
-      message: 'Booking created successfully'
+      message: 'Booking request sent to owner!'
     });
 
   } catch (error) {
     console.error('Error creating booking:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while creating booking'
-    });
+    res.status(500).json({ success: false, message: 'Server error while creating booking' });
   }
 };
 
@@ -121,38 +113,26 @@ const getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('customer', 'name email phone')
-      .populate('car', 'name year color image pricePerDay images')
+      .populate('car')
       .populate('owner', 'name email phone');
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found'
-      });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
     if (
       booking.customer._id.toString() !== req.user._id.toString() &&
-      booking.owner._id.toString() !== req.user._id.toString() &&
+      booking.owner?.toString() !== req.user._id.toString() &&
       req.user.role !== 'admin'
     ) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to view this booking'
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized to view this booking' });
     }
 
-    res.json({
-      success: true,
-      data: booking
-    });
+    res.json({ success: true, data: booking });
 
   } catch (error) {
     console.error('Error fetching booking:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching booking'
-    });
+    res.status(500).json({ success: false, message: 'Server error while fetching booking' });
   }
 };
 
@@ -179,7 +159,8 @@ const getMyBookings = async (req, res) => {
 
     const [bookings, total] = await Promise.all([
       Booking.find(query)
-        .populate('car', 'name year color image')
+        .populate('car')
+        .populate('customer', 'name email phone')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -200,10 +181,7 @@ const getMyBookings = async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching my bookings:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching bookings'
-    });
+    res.status(500).json({ success: false, message: 'Server error while fetching bookings' });
   }
 };
 
@@ -215,32 +193,22 @@ const cancelBooking = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found'
-      });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
     if (
       booking.customer.toString() !== req.user._id.toString() &&
       req.user.role !== 'admin'
     ) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to cancel this booking'
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized to cancel this booking' });
     }
 
     if (['completed', 'cancelled'].includes(booking.status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot cancel a ${booking.status} booking`
-      });
+      return res.status(400).json({ success: false, message: `Cannot cancel a ${booking.status} booking` });
     }
 
     const now = new Date();
-    const pickupTime = new Date(booking.startDate);
-    const hoursUntilPickup = (pickupTime - now) / (1000 * 60 * 60);
+    const hoursUntilPickup = (new Date(booking.startDate) - now) / (1000 * 60 * 60);
 
     let refundAmount = 0;
 
@@ -271,10 +239,7 @@ const cancelBooking = async (req, res) => {
 
   } catch (error) {
     console.error('Error cancelling booking:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while cancelling booking'
-    });
+    res.status(500).json({ success: false, message: 'Server error while cancelling booking' });
   }
 };
 
@@ -287,49 +252,32 @@ const updateBookingStatus = async (req, res) => {
     const validStatuses = ['pending', 'approved', 'rejected', 'active', 'confirmed', 'completed', 'cancelled'];
 
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
-      });
+      return res.status(400).json({ success: false, message: `Invalid status.` });
     }
 
     const booking = await Booking.findById(req.params.id);
-
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found'
-      });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // Safely check owner to prevent crash if owner is missing
     if (booking.owner) {
       if (
         booking.owner.toString() !== req.user._id.toString() &&
         req.user.role !== 'admin'
       ) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to update this booking'
-        });
+        return res.status(403).json({ success: false, message: 'Not authorized' });
       }
     }
 
     booking.status = status;
     await booking.save();
 
-    res.json({
-      success: true,
-      data: booking,
-      message: `Booking status updated to ${status}`
-    });
+    const updatedBooking = await Booking.findById(booking._id).populate('car').populate('customer', 'name email phone');
 
+    res.json({ success: true, data: updatedBooking, message: `Booking status updated to ${status}` });
   } catch (error) {
-    console.error('❌ Error updating booking status:', error.message);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server error while updating booking status'
-    });
+    console.error('Error updating booking status:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
@@ -340,9 +288,6 @@ const generateConfirmationNumber = () => {
   return `LUXE-${timestamp}-${random}`;
 };
 
-// ============================================================================
-// CRITICAL: This was missing! It exports the functions so routes can use them.
-// ============================================================================
 module.exports = {
   createBooking,
   getBookingById,
