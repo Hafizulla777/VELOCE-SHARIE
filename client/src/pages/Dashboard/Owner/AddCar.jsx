@@ -71,7 +71,7 @@ const AddCar = () => {
       </motion.p>
 
       <form onSubmit={onSubmit} className="space-y-8">
-        
+
         {/* Image Upload Section */}
         <motion.div variants={fadeUp} className="glass-card p-6 rounded-2xl">
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
@@ -132,7 +132,7 @@ const AddCar = () => {
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Category *</label>
                 <select name="category" value={formData.category} onChange={onChange} required className="input-field bg-dark-200">
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  {categories.map(c => <option className="bg-dark-200" key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
@@ -166,13 +166,13 @@ const AddCar = () => {
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Fuel</label>
                   <select name="fuel" value={specs.fuel} onChange={onSpecChange} className="input-field bg-dark-200">
-                    {fuelTypes.map(f => <option key={f} value={f}>{f}</option>)}
+                    {fuelTypes.map(f => <option className='bg-dark-200' key={f} value={f}>{f}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Transmission</label>
                   <select name="transmission" value={specs.transmission} onChange={onSpecChange} className="input-field bg-dark-200">
-                    {transmissions.map(t => <option key={t} value={t}>{t}</option>)}
+                    {transmissions.map(t => <option className='bg-dark-200' key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>
